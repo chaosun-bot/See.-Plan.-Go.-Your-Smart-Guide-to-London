@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>London Top 10</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+        .frame-container {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 75%; /* 4:3 aspect ratio, can be adjusted as needed */
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            overflow: hidden;
+        }
+        
+        /* Use viewport height on larger screens */
+        @media (min-width: 768px) and (min-height: 600px) {
+            .frame-container {
+                height: 100vh;
+                padding-bottom: 0;
+            }
+        }
+        
+        /* Scale down content on smaller screens */
+        @media (max-width: 480px), (max-height: 480px) {
+            .frame-container {
+                padding-bottom: 100%; /* Use square ratio on smaller screens */
+            }
+        }
+    </style>
+    <script>
+        // IMPORTANT: We're removing the redirect-on-refresh code 
+        // since it causes the page context loss problem
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="frame-container" id="intro-container">
+            <iframe class="frame" id="intro-frame" src="Top 10 Intro/Top10 Intro.html" frameborder="0" allowfullscreen></iframe>
+        </div>
+        <div class="frame-container" id="top10-container">
+            <iframe class="frame" id="top10-frame" src="Top 10/Top10.html" frameborder="0" allowfullscreen></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Wait for page to load completely
+        document.addEventListener('DOMContentLoaded', function() {
+            // Parse URL parameters
+            function getUrlParams() {
+                const params = {};
+                const queryString = window.location.search.substring(1);
+                const pairs = queryString.split('&');
+                
+                for (let i = 0; i < pairs.length; i++) {
+                    const pair = pairs[i].split('=');
+                    if (pair.length === 2) {
+                        params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+                    }
+                }
+                
+                return params;
+            }
+            
+            // Get parameters
+            const params = getUrlParams();
+            console.log('URL parameters:', params);
+            
+            // Get iframe elements for standard messaging
+            const introFrame = document.getElementById('intro-frame');
+            const top10Frame = document.getElementById('top10-frame');
+            
+            // If landmark parameter exists, scroll to Top10 container and navigate directly
+            if (params.landmark !== undefined) {
+                const landmarkIndex = parseInt(params.landmark, 10);
+                console.log('Found landmark parameter:', landmarkIndex);
+                
+                // Scroll to Top10 container immediately
+                document.getElementById('top10-container').scrollIntoView({ behavior: 'auto' });
+                
+                // Wait for Top10 iframe to load
+                const top10Frame = document.getElementById('top10-frame');
+                
+                top10Frame.onload = function() {
+                    console.log('Top10 frame loaded, navigating to landmark index:', landmarkIndex);
+                    // Send message to Top10 frame
+                    setTimeout(function() {
+                        top10Frame.contentWindow.postMessage({
+                            action: 'directNavigate',
+                            index: landmarkIndex
+                        }, '*');
+                    }, 500);
+                };
+            }
+            
+            // Listen for messages from iframe
+            window.addEventListener('message', function(event) {
+                // Check if message is about Explore button click
+                if (event.data === 'exploreClicked') {
+                    // Scroll to Top 10 page
+                    document.getElementById('top10-container').scrollIntoView({ 
+                        behavior: 'smooth' 
+                    });
+                }
+                // Check if message is about navigating to a specific landmark
+                else if (event.data && event.data.action === 'navigateToLandmark') {
+                    // First scroll to Top 10 page
+                    document.getElementById('top10-container').scrollIntoView({ 
+                        behavior: 'smooth' 
+                    });
+                    
+                    const landmarkIndex = event.data.index;
+                    console.log("Received navigation request for landmark index:", landmarkIndex);
+                    
+                    // Forward to Top10 iframe
+                    top10Frame.contentWindow.postMessage({
+                        action: 'directNavigate',
+                        index: landmarkIndex
+                    }, '*');
+                }
+            });
+            
+            // Set up message listener after intro iframe loads
+            introFrame.onload = function() {
+                // Send message to iframe, telling it we're ready to receive messages
+                introFrame.contentWindow.postMessage('ready', '*');
+            };
+        });
+    </script>
+</body>
+</html> 
